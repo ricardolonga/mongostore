@@ -6,12 +6,14 @@ package mongostore
 
 import (
 	"errors"
+	"net/http"
+	"time"
+
+	"github.com/NeowayLabs/logger"
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"net/http"
-	"time"
 )
 
 var (
@@ -23,6 +25,7 @@ type Session struct {
 	Id       bson.ObjectId `bson:"_id,omitempty"`
 	Data     string
 	Modified time.Time
+	Username string `bson:"username,omitempty"`
 }
 
 // MongoStore stores sessions in MongoDB
@@ -40,7 +43,7 @@ func NewMongoStore(c *mgo.Collection, maxAge int, ensureTTL bool,
 	store := &MongoStore{
 		Codecs: securecookie.CodecsFromPairs(keyPairs...),
 		Options: &sessions.Options{
-			Path: "/",
+			Path:   "/",
 			MaxAge: maxAge,
 		},
 		Token: &CookieToken{},
@@ -162,14 +165,18 @@ func (m *MongoStore) upsert(session *sessions.Session) error {
 		return err
 	}
 
+	username, _ := session.Values["uid"].(string)
+
 	s := Session{
 		Id:       bson.ObjectIdHex(session.ID),
 		Data:     encoded,
 		Modified: modified,
+		Username: username,
 	}
 
-	_, err = m.coll.UpsertId(s.Id, &s)
+	_, err = m.coll.Upsert(bson.M{"_id": s.Id, "username": s.Username}, &s)
 	if err != nil {
+		logger.Error("Erro no upsert em users_session. %s", err)
 		return err
 	}
 
