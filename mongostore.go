@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/NeowayLabs/logger"
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
 	"gopkg.in/mgo.v2"
@@ -174,9 +173,8 @@ func (m *MongoStore) upsert(session *sessions.Session) error {
 		Username: username,
 	}
 
-	_, err = m.coll.Upsert(bson.M{"_id": s.Id, "username": s.Username}, &s)
+	_, err = m.coll.UpsertId(s.Id, &s)
 	if err != nil {
-		logger.Error("Erro no upsert em users_session. %s", err)
 		return err
 	}
 
